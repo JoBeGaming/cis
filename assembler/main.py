@@ -13,7 +13,7 @@ class AsmApi:
             lines = f.readlines()
             return asm(lines)
     
-    """Assembles program from lines, then it should return a dict with 0b00000001: [0, 0, 0, ...], but it returns list for now"""
+    """Assembles program from lines, then it should return a dict with 0b00000001: [0, 0, 0, ...]"""
     def asm_string(self, progLines: list) -> dict:
         return asm(progLines)
 
@@ -123,7 +123,7 @@ def makeInstruction(name: str, operands: list) -> list:
     if len(output) != 15:
         print("E: Internal error, output len isn't 15")
         print(f"E: {output}")
-        raise SystemExit(1)
+        exit(1)
     return output
 
 def resolveImmediate(value: str) -> list:
@@ -151,22 +151,21 @@ def resolveLabel(value: str) -> list:
     if not value in labels:
         print("E: Syntax error, undefined label") #TODO: resolve labels at end of execution
         print(f"E: {value}")
-        raise SystemExit(1)
+        exit(1)
 
 
 def main():
     parser = argparse.ArgumentParser(
-    prog="cis-asm",
-    description="CPU in Surival - Assembler"
+        prog="cis-asm",
+        description="CPU in Surival - Assembler"
     )
     parser.add_argument("input_file")
     parser.add_argument("--out", help="Output file")
-
     args = parser.parse_args()
 
     if not Path(args.input_file).exists():
         print("E: The input file doesn't exist")
-        raise SystemExit(1)
+        exit(1)
     
     with open(args.input_file, "r") as f:
         lines = f.readlines()
@@ -190,7 +189,7 @@ def asm(lines):
             else:
                 print("E: Syntax error, invalid macro")
                 print(f"E: {line}")
-                raise SystemExit(1)
+                exit(1)
 
         if line.strip().startswith("."):
             label = line.strip().removeprefix(".")
