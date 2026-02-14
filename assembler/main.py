@@ -1,6 +1,9 @@
 import argparse
 from pathlib import Path
 
+labels = {}
+progCounter = -1
+
 class AsmApi:
     def __init__(self):
         pass
@@ -13,6 +16,9 @@ class AsmApi:
     """Assembles program from lines, then it should return a dict with 0b00000001: [0, 0, 0, ...], but it returns list for now"""
     def asm_string(self, progLines: list) -> dict:
         return asm(progLines)
+
+def binPad(string, lenght=8):
+    return string.zfill(lenght)
 
 def makeInstruction(name: str, operands: list) -> list:
     output = []
@@ -118,8 +124,6 @@ def makeInstruction(name: str, operands: list) -> list:
         print("E: Internal error, output len isn't 15")
         print(f"E: {output}")
         raise SystemExit(1)
-    
-    print("".join(str(bit) for bit in output))
     return output
 
 def resolveImmediate(value: str) -> list:
@@ -135,8 +139,20 @@ def resolveImmediate(value: str) -> list:
     
     return list(out)
 
+def counter(increase):
+    global progCounter
+
+    if increase:
+        progCounter += 1
+    
+    return "b" + binPad(bin(progCounter).replace("0b", ""))
+
 def resolveLabel(value: str) -> list:
-    pass
+    if not value in labels:
+        print("E: Syntax error, undefined label") #TODO: resolve labels at end of execution
+        print(f"E: {value}")
+        raise SystemExit(1)
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -157,7 +173,7 @@ def main():
         asm(lines)
 
 def asm(lines):
-    output = []
+    output = {}
     for line in lines:
         if ";" in line.strip():
             line = line.split(";")[0].strip()
@@ -165,7 +181,7 @@ def asm(lines):
                 continue
         
         if line.strip().startswith("@"):
-            macro = line.removeprefix("@").replace("\n", "").split(" ")
+            macro = line.strip().removeprefix("@").replace("\n", "").split(" ")
 
             if macro[0] == "def":
                 continue
@@ -177,6 +193,8 @@ def asm(lines):
                 raise SystemExit(1)
 
         if line.strip().startswith("."):
+            label = line.strip().removeprefix(".")
+            labels[label] = counter(False)
             continue
         
         if line.strip() == "":
@@ -184,9 +202,13 @@ def asm(lines):
 
         # Normal instruction    
         i = line.replace("\n", "").split(" ")
-        output.extend(makeInstruction(i[0].upper(), i[1:]))
+        output[counter(True)] = makeInstruction(i[0].upper(), i[1:])
+
+        d = "".join(str(bit) for bit in output[counter(False)])
+        print(counter(False) + " " + d)
 
     print(".")
+    print(output)
     return output
 
 if __name__ == "__main__":
