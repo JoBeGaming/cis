@@ -1,5 +1,9 @@
 ; a comment
+@inline
 ADD r1 r1 r2
 RNG r1
 
 BRH 0xFF msb
+CAL 0xFF
+
+RET
