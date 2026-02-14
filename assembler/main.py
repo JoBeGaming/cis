@@ -1,13 +1,22 @@
 import argparse
 from pathlib import Path
 
-def makeInstruction(name: str, operands: list):
+class AsmApi:
+    def __init__(self):
+        pass
+    
+    def asm_file(self, path: Path):
+        pass
+    def asm_string(self, string: str):
+        pass
+
+def makeInstruction(name: str, operands: list) -> list:
     output = []
 
     opcodes = {
         "HLT": [ 0, 0, 0, 0 ],
         "NOT": [ 0, 0, 0, 1 ],
-        "AND": [ 0, 0, 1, 0 ],
+        "ADD": [ 0, 0, 1, 0 ],
         "SUB": [ 0, 0, 1, 1 ],
         "AND": [ 0, 1, 0, 0 ],
         "XOR": [ 0, 1, 0, 1 ],
@@ -40,25 +49,35 @@ def makeInstruction(name: str, operands: list):
         "r7": [ 1, 1, 1],
     }
 
+    flags = {
+        "true":  [ 0, 0, 0],
+        "msb":   [ 0, 0, 1],
+        "zero":  [ 0, 1, 0],
+        "cout":  [ 0, 1, 1],
+        "lsb":   [ 1, 0, 0],
+        "!msb":  [ 1, 0, 1],
+        "!zero": [ 1, 1, 0],
+        "!cout": [ 1, 1, 1]
+    }
+
     opcode = opcodes[name]
     
-    match opcode:
+    match name:
             case "NOT": #1
                 print("")
 
             case "ADD": #2
                 output = [ 0, 0] + registers[operands[2]] + registers[operands[1]] + registers[operands[0]]
-                output.extend(opcode)
             case "SUB": #3
-                #output = [0, 0] + operands[2] + operands[1] + operands[0] + opcode
+                output = [ 0, 0] + registers[operands[2]] + registers[operands[1]] + registers[operands[0]]
             case "AND": #4
-                
+                output = [ 0, 0] + registers[operands[2]] + registers[operands[1]] + registers[operands[0]]
             case "XOR": #5
-                
+                output = [ 0, 0] + registers[operands[2]] + registers[operands[1]] + registers[operands[0]]
             case "NOR": #6
-                
+                output = [ 0, 0] + registers[operands[2]] + registers[operands[1]] + registers[operands[0]]
             case "RSH": #7
-                print("")
+                output = [ 0, 0, 0, 0, 0] + registers[operands[1]] + registers[operands[0]]
             case "LDI": #8
                 print("")
             case "ADI": #9
@@ -76,20 +95,45 @@ def makeInstruction(name: str, operands: list):
             case "RET": #13
                 print("")
             case "BRH": #14
-                print("")
+                if not operands[1] in flags:
+                    print(f"E: Syntax error, invalid flag {operands[1]}")
+                    raise SystemExit(1)
+                output = resolveImmediate(operands[0]) + flags[operands[1]]
             case "RNG": #15
-                print("")
+                output = [0, 0, 0, 0, 0, 0, 0, 0] + registers[operands[0]]
 
             case "JMP": #Pseudo instruction: BRH true
                 print("")
             case "NOP":
                 output = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-                output.extend(opcode)
             case "HLT": #0
                 output = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
-                output.extend(opcode)
 
+    output.extend(opcode)
+
+    if len(output) != 15:
+        print("E: Internal error, output len isn't 15")
+        print(f"E: {output}")
+        raise SystemExit(1)
+    
+    print("".join(str(bit) for bit in output))
     return output
+
+def resolveImmediate(value: str) -> list:
+    out = []
+    if value.startswith("0d"):
+        out = bin(int(value.replace("0d", ""), 10)).replace("0b", "")
+    elif value.startswith("0x"):
+        out = bin(int(value.replace("0x", ""), 16)).replace("0b", "")
+    elif value.startswith("0b"):
+        out = value.replace("0b", "")
+    else:
+        pass
+    
+    return list(out)
+
+def resolveLabel(value: str) -> list:
+    pass
 
 parser = argparse.ArgumentParser(
     prog="cis-asm",
@@ -109,11 +153,18 @@ with open(args.input_file, "r") as f:
     lines = f.readlines() 
     for line in lines:
         if ";" in line.strip():
-            pass
+            line = line.split(";")[0].strip()
+            if not line:
+                continue
+              
         if line.strip().startswith("."):
-            break
+            continue
+        
+        if line.strip() == "":
+            continue
 
         # Normal instruction    
-        i = line.split(" ")
-        
-        output.extend(makeInstruction(i[0], ))
+        i = line.replace("\n", "").split(" ")
+        output.extend(makeInstruction(i[0].upper(), i[1:]))
+
+print(".")
