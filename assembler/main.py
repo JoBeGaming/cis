@@ -6,9 +6,13 @@ class AsmApi:
         pass
     
     def asm_file(self, path: Path):
-        pass
-    def asm_string(self, string: str):
-        pass
+        with open(path, "r") as f:
+            lines = f.readlines()
+            return asm(lines)
+    
+    """Assembles program from lines, then it should return a dict with 0b00000001: [0, 0, 0, ...], but it returns list for now"""
+    def asm_string(self, progLines: list) -> dict:
+        return asm(progLines)
 
 def makeInstruction(name: str, operands: list) -> list:
     output = []
@@ -64,8 +68,7 @@ def makeInstruction(name: str, operands: list) -> list:
     
     match name:
             case "NOT": #1
-                print("")
-
+                output = [ 0, 0, 0, 0, 0] + registers[operands[1]] + registers[operands[0]]
             case "ADD": #2
                 output = [ 0, 0] + registers[operands[2]] + registers[operands[1]] + registers[operands[0]]
             case "SUB": #3
@@ -79,9 +82,9 @@ def makeInstruction(name: str, operands: list) -> list:
             case "RSH": #7
                 output = [ 0, 0, 0, 0, 0] + registers[operands[1]] + registers[operands[0]]
             case "LDI": #8
-                print("")
+                output = resolveImmediate(operands[1]) + registers[operands[0]]
             case "ADI": #9
-                print("")
+                output = resolveImmediate(operands[1]) + registers[operands[0]]
             case "LOD": #10
                 print("")
             case "STR": #10
@@ -91,19 +94,19 @@ def makeInstruction(name: str, operands: list) -> list:
             case "OUT": #11
                 print("")
             case "CAL": #12
-                print("")
+                output = resolveImmediate(operands[0]) + [0, 0, 0] #TODO: replace with resolveLabel
             case "RET": #13
-                print("")
+                output = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
             case "BRH": #14
                 if not operands[1] in flags:
                     print(f"E: Syntax error, invalid flag {operands[1]}")
                     raise SystemExit(1)
-                output = resolveImmediate(operands[0]) + flags[operands[1]]
+                output = resolveImmediate(operands[0]) + flags[operands[1]] #TODO: replace with resolveLabel
             case "RNG": #15
                 output = [0, 0, 0, 0, 0, 0, 0, 0] + registers[operands[0]]
 
             case "JMP": #Pseudo instruction: BRH true
-                print("")
+                output = resolveImmediate(operands[0]) + flags["true"] #TODO: replace with resolveLabel
             case "NOP":
                 output = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
             case "HLT": #0
@@ -135,28 +138,34 @@ def resolveImmediate(value: str) -> list:
 def resolveLabel(value: str) -> list:
     pass
 
-parser = argparse.ArgumentParser(
+def main():
+    parser = argparse.ArgumentParser(
     prog="cis-asm",
     description="CPU in Surival - Assembler"
-)
-parser.add_argument("input_file")
-parser.add_argument("--out", help="Output file")
+    )
+    parser.add_argument("input_file")
+    parser.add_argument("--out", help="Output file")
 
-args = parser.parse_args()
-output = []
+    args = parser.parse_args()
 
-if not Path(args.input_file).exists():
-    print("E: The input file doesn't exist")
-    raise SystemExit(1)
+    if not Path(args.input_file).exists():
+        print("E: The input file doesn't exist")
+        raise SystemExit(1)
+    
+    with open(args.input_file, "r") as f:
+        lines = f.readlines()
+        asm(lines)
 
-with open(args.input_file, "r") as f:
-    lines = f.readlines() 
+def asm(lines):
+    output = []
     for line in lines:
         if ";" in line.strip():
             line = line.split(";")[0].strip()
             if not line:
                 continue
-              
+        
+        if line.strip().startswith("@"):
+            continue        
         if line.strip().startswith("."):
             continue
         
@@ -167,4 +176,8 @@ with open(args.input_file, "r") as f:
         i = line.replace("\n", "").split(" ")
         output.extend(makeInstruction(i[0].upper(), i[1:]))
 
-print(".")
+    print(".")
+    return output
+
+if __name__ == "__main__":
+    main()
