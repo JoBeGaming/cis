@@ -165,7 +165,17 @@ def asm(lines):
                 continue
         
         if line.strip().startswith("@"):
-            continue        
+            macro = line.removeprefix("@").replace("\n", "").split(" ")
+
+            if macro[0] == "def":
+                continue
+            elif macro[0] == "inline":
+                continue
+            else:
+                print("E: Syntax error, invalid macro")
+                print(f"E: {line}")
+                raise SystemExit(1)
+
         if line.strip().startswith("."):
             continue
         
