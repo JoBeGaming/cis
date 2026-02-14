@@ -1,0 +1,5 @@
+; Comment
+
+.label
+    ADD r1 r2 r2
+    JMP label
