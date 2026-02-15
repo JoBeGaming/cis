@@ -3,6 +3,8 @@ from pathlib import Path
 
 labels = {}
 progCounter = -1
+# Counts Lines in File
+LineCounter = 0
 
 class AsmApi:
     def __init__(self):
@@ -121,8 +123,13 @@ def makeInstruction(name: str, operands: list) -> list:
     output.extend(opcode)
 
     if len(output) != 15:
-        print("E: Internal error, output len isn't 15")
-        print(f"E: {output}")
+        # ANSI Color codes
+        red = "\033[31m"
+        cyan = "\033[36m"
+        rst = "\033[0m" # Reset
+        print(f"{red}E:{rst} Expected {cyan}15{rst} bits got {cyan}{len(output)}{rst} bits")
+        print(f"    Line: {cyan}{LineCounter}{rst}, Instruction {cyan}{name} {operands}{rst}")
+        print(f"    Binary Instruction: {cyan}{output}{rst}")
         exit(1)
     return output
 
@@ -139,7 +146,7 @@ def resolveImmediate(value: str) -> list:
     
     return list(out)
 
-def counter(increase):
+def counter(increase: int):
     global progCounter
 
     if increase:
@@ -171,9 +178,14 @@ def main():
         lines = f.readlines()
         asm(lines)
 
-def asm(lines):
+def asm(lines: list[str]):
     output = {}
     for line in lines:
+
+        # Count Real lines to show where error happened smh smh
+        global LineCounter
+        LineCounter += 1
+
         if ";" in line.strip():
             line = line.split(";")[0].strip()
             if not line:
@@ -199,8 +211,8 @@ def asm(lines):
         if line.strip() == "":
             continue
 
-        # Normal instruction    
-        i = line.replace("\n", "").split(" ")
+        # Normal instruction
+        i = line.replace("\n", "").split()
         output[counter(True)] = makeInstruction(i[0].upper(), i[1:])
 
         d = "".join(str(bit) for bit in output[counter(False)])
