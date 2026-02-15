@@ -2,7 +2,8 @@ import argparse
 from pathlib import Path
 
 labels = {}
-progCounter = -1
+progCounter = -1  # Magic number
+labelCounter =  0 # Magic number
 # Counts Lines in File
 LineCounter = 0
 
@@ -102,7 +103,7 @@ def makeInstruction(name: str, operands: list) -> list:
             case "OUT": #11
                 print("")
             case "CAL": #12
-                output = resolveImmediate(operands[0]) + [0, 0, 0] #TODO: replace with resolveLabel
+                output = resolveLabel(operands[0]) + [0, 0, 0] #TODO: replace with resolveLabel
             case "RET": #13
                 output = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
             case "BRH": #14
@@ -154,12 +155,24 @@ def counter(increase: int):
     
     return "b" + binPad(bin(progCounter).replace("0b", ""))
 
+def counterLabel(increase: int):
+    global labelCounter
+
+    if increase:
+        labelCounter += 1
+    
+    return "b" + binPad(bin(labelCounter).replace("0b", ""))
+
 def resolveLabel(value: str) -> list:
+    if ( value.startswith("0x") or value.startswith("0d") or value.startswith("0b") ):
+        return resolveImmediate(str)
+
     if not value in labels:
         print("E: Syntax error, undefined label") #TODO: resolve labels at end of execution
         print(f"E: {value}")
         exit(1)
 
+    return list(labels[value].replace("b", ""))
 
 def main():
     parser = argparse.ArgumentParser(
@@ -180,12 +193,12 @@ def main():
 
 def asm(lines: list[str]):
     output = {}
+    linesP = []
+
+    macros = {}
+
+    # Preprocessor
     for line in lines:
-
-        # Count Real lines to show where error happened smh smh
-        global LineCounter
-        LineCounter += 1
-
         if ";" in line.strip():
             line = line.split(";")[0].strip()
             if not line:
@@ -195,9 +208,16 @@ def asm(lines: list[str]):
             macro = line.strip().removeprefix("@").replace("\n", "").split(" ")
 
             if macro[0] == "def":
+                if not (len(macro) - 1) == 2:
+                    print("E: Syntax error, invalid @def macro")
+                    print(f"E: Expected 2 arguments got {len(macro) - 1}")
+                    exit(1)
+                macros[macro[1]] = macro[2]
                 continue
             elif macro[0] == "inline":
-                continue
+                print("E: Internal error, @inline not implemented")
+                exit()
+                #continue
             else:
                 print("E: Syntax error, invalid macro")
                 print(f"E: {line}")
@@ -205,21 +225,38 @@ def asm(lines: list[str]):
 
         if line.strip().startswith("."):
             label = line.strip().removeprefix(".")
-            labels[label] = counter(False)
+            labels[label] = counterLabel(False)
             continue
         
         if line.strip() == "":
             continue
+        
+        for key, replaceStr in macros.items():
+            line = line.replace(key, replaceStr)
+        
+        linesP.append(line)
+        counterLabel(True)
+
+    # Assembler
+    for line in linesP:
+        # Count Real lines to show where error happened smh smh
+        global LineCounter
+        LineCounter += 1
 
         # Normal instruction
         i = line.replace("\n", "").split()
         output[counter(True)] = makeInstruction(i[0].upper(), i[1:])
 
         d = "".join(str(bit) for bit in output[counter(False)])
-        print(counter(False) + " " + d)
+
+        labelsSwaped = {v: k for k, v in labels.items()}
+        logLabel = ""
+        if counter(False) in labelsSwaped:
+            logLabel = labelsSwaped[counter(False)]
+        print(counter(False).replace("1", "█").replace("0", " ") + " " + d + " " + i[0] + " " + logLabel) # If label log it (labels[counter(False)] if counter(False) in labels else "")
 
     print(".")
-    print(output)
+    print(labels)
     return output
 
 if __name__ == "__main__":

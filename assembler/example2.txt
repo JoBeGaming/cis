@@ -1,9 +1,11 @@
 ; a comment
-@inline
+; a second comment
+@def a a
+@def b b
 ADD r1 r1 r2
 RNG r1
-
+.mylovelylabel
 BRH 0xFF msb
-CAL 0xFF
-
+CAL mylovelylabel
+.mycabbagelabel
 RET
