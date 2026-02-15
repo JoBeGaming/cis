@@ -110,12 +110,12 @@ def makeInstruction(name: str, operands: list) -> list:
                 if not operands[1] in flags:
                     print(f"E: Syntax error, invalid flag {operands[1]}")
                     raise SystemExit(1)
-                output = resolveImmediate(operands[0]) + flags[operands[1]] #TODO: replace with resolveLabel
+                output = resolveLabel(operands[0]) + flags[operands[1]] #TODO: replace with resolveLabel
             case "RNG": #15
                 output = [0, 0, 0, 0, 0, 0, 0, 0] + registers[operands[0]]
 
             case "JMP": #Pseudo instruction: BRH true
-                output = resolveImmediate(operands[0]) + flags["true"] #TODO: replace with resolveLabel
+                output = resolveLabel(operands[0]) + flags["true"] #TODO: replace with resolveLabel
             case "NOP":
                 output = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
             case "HLT": #0
