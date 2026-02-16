@@ -103,19 +103,19 @@ def makeInstruction(name: str, operands: list) -> list:
             case "OUT": #11
                 print("")
             case "CAL": #12
-                output = resolveLabel(operands[0]) + [0, 0, 0] #TODO: replace with resolveLabel
+                output = resolveLabel(operands[0]) + [0, 0, 0]
             case "RET": #13
                 output = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
             case "BRH": #14
                 if not operands[1] in flags:
                     print(f"E: Syntax error, invalid flag {operands[1]}")
                     raise SystemExit(1)
-                output = resolveLabel(operands[0]) + flags[operands[1]] #TODO: replace with resolveLabel
+                output = resolveLabel(operands[0]) + flags[operands[1]]
             case "RNG": #15
                 output = [0, 0, 0, 0, 0, 0, 0, 0] + registers[operands[0]]
 
             case "JMP": #Pseudo instruction: BRH true
-                output = resolveLabel(operands[0]) + flags["true"] #TODO: replace with resolveLabel
+                output = resolveLabel(operands[0]) + flags["true"]
             case "NOP":
                 output = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
             case "HLT": #0
@@ -165,7 +165,10 @@ def counterLabel(increase: int):
 
 def resolveLabel(value: str) -> list:
     if ( value.startswith("0x") or value.startswith("0d") or value.startswith("0b") ):
-        return resolveImmediate(str)
+        return resolveImmediate(value)
+    
+    if value.startswith("."):
+        value = value.removeprefix(".").replace("\n", "")
 
     if not value in labels:
         print("E: Syntax error, undefined label") #TODO: resolve labels at end of execution
