@@ -209,7 +209,7 @@ def asm(lines: list[str], printOps: bool):
                 continue
         
         if line.strip().startswith("@"):
-            macro = line.strip().removeprefix("@").replace("\n", "").split(" ")
+            macro = line.strip().removeprefix("@").replace("\n", "").split()
 
             if macro[0] == "def":
                 if not (len(macro) - 1) == 2:
