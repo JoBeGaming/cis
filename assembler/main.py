@@ -184,6 +184,7 @@ def main():
     )
     parser.add_argument("input_file")
     parser.add_argument("--out", help="Output file")
+    parser.add_argument("--print-ops", help="Print full instruction input")
     args = parser.parse_args()
 
     if not Path(args.input_file).exists():
@@ -192,9 +193,9 @@ def main():
     
     with open(args.input_file, "r") as f:
         lines = f.readlines()
-        asm(lines)
+        asm(lines, bool(args.print_ops))
 
-def asm(lines: list[str]):
+def asm(lines: list[str], printOps: bool):
     output = {}
     linesP = []
 
@@ -256,7 +257,7 @@ def asm(lines: list[str]):
         logLabel = ""
         if counter(False) in labelsSwaped:
             logLabel = labelsSwaped[counter(False)]
-        print(counter(False).replace("1", "█").replace("0", " ") + " " + d + " " + i[0] + " " + logLabel) # If label log it (labels[counter(False)] if counter(False) in labels else "")
+        print(counter(False).replace("1", "█").replace("0", " ") + " " + d + " " + (( "".join((str(v) + " ") for v in i) ) if printOps else i[0] ) + " " + logLabel) # If label log it (labels[counter(False)] if counter(False) in labels else "")
 
     print(".")
     print(labels)
