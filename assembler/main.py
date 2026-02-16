@@ -1,5 +1,8 @@
-import argparse
 from pathlib import Path
+
+
+import argparse
+
 
 labels = {}
 progCounter = -1  # Magic number
@@ -11,22 +14,26 @@ class AsmApi:
     def __init__(self):
         pass
     
-    def asm_file(self, path: Path):
+    def asm_file(self, path: Path) -> ...:
         with open(path, "r") as f:
             lines = f.readlines()
-            return asm(lines)
+
+        return asm(lines)
     
-    """Assembles program from lines, then it should return a dict with 0b00000001: [0, 0, 0, ...]"""
-    def asm_string(self, progLines: list) -> dict:
+    def asm_string(self, progLines: list) -> dict[int, list[int]]:
+        """
+        Assembles program from lines, returning a dict with 0b00000001: [0, 0, 0, ...]
+        """
+
         return asm(progLines)
 
-def binPad(string, lenght=8):
+def binPad(string: str, lenght: int = 8) -> str:
     return string.zfill(lenght)
 
-def makeInstruction(name: str, operands: list) -> list:
-    output = []
+def makeInstruction(name: str, operands: list[str]) -> list[int]:
+    output: list[int] = []
 
-    opcodes = {
+    opcodes: dict[str, list[int]] = {
         "HLT": [ 0, 0, 0, 0 ],
         "NOT": [ 0, 0, 0, 1 ],
         "ADD": [ 0, 0, 1, 0 ],
@@ -50,7 +57,7 @@ def makeInstruction(name: str, operands: list) -> list:
         "JMP": [ 1, 1, 1, 0 ]
     }
 
-    registers = {
+    registers: dict[str, list[int]] = {
         "0":  [ 0, 0, 0],
         "r0": [ 0, 0, 0],
         "r1": [ 0, 0, 1],
@@ -62,7 +69,7 @@ def makeInstruction(name: str, operands: list) -> list:
         "r7": [ 1, 1, 1],
     }
 
-    flags = {
+    flags: dict[str, list[int]] = {
         "true":  [ 0, 0, 0],
         "msb":   [ 0, 0, 1],
         "zero":  [ 0, 1, 0],
@@ -73,7 +80,7 @@ def makeInstruction(name: str, operands: list) -> list:
         "!cout": [ 1, 1, 1]
     }
 
-    opcode = opcodes[name]
+    opcode: list[int] = opcodes[name]
     
     match name:
             case "NOT": #1
@@ -132,9 +139,10 @@ def makeInstruction(name: str, operands: list) -> list:
         print(f"    Line: {cyan}{LineCounter}{rst}, Instruction {cyan}{name} {operands}{rst}")
         print(f"    Binary Instruction: {cyan}{output}{rst}")
         exit(1)
+
     return output
 
-def resolveImmediate(value: str) -> list:
+def resolveImmediate(value: str) -> str:
     out = []
     if value.startswith("0d"):
         out = bin(int(value.replace("0d", ""), 10)).replace("0b", "")
@@ -142,12 +150,10 @@ def resolveImmediate(value: str) -> list:
         out = bin(int(value.replace("0x", ""), 16)).replace("0b", "")
     elif value.startswith("0b"):
         out = value.replace("0b", "")
-    else:
-        pass
-    
+
     return list(out)
 
-def counter(increase: int):
+def counter(increase: int) -> str:
     global progCounter
 
     if increase:
@@ -155,7 +161,7 @@ def counter(increase: int):
     
     return "b" + binPad(bin(progCounter).replace("0b", ""))
 
-def counterLabel(increase: int):
+def counterLabel(increase: int) -> str:
     global labelCounter
 
     if increase:
@@ -163,8 +169,8 @@ def counterLabel(increase: int):
     
     return "b" + binPad(bin(labelCounter).replace("0b", ""))
 
-def resolveLabel(value: str) -> list:
-    if ( value.startswith("0x") or value.startswith("0d") or value.startswith("0b") ):
+def resolveLabel(value: str) -> list[str]:
+    if value.startswith("0x") or value.startswith("0d") or value.startswith("0b"):
         return resolveImmediate(value)
     
     if value.startswith("."):
@@ -177,14 +183,14 @@ def resolveLabel(value: str) -> list:
 
     return list(labels[value].replace("b", ""))
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         prog="cis-asm",
         description="CPU in Surival - Assembler"
     )
     parser.add_argument("input_file")
     parser.add_argument("--out", help="Output file")
-    parser.add_argument("--print-ops", help="Print full instruction input")
+    parser.add_option("--print-ops", help="Print full instruction input") # should be right idk
     args = parser.parse_args()
 
     if not Path(args.input_file).exists():
@@ -193,13 +199,14 @@ def main():
     
     with open(args.input_file, "r") as f:
         lines = f.readlines()
-        asm(lines, bool(args.print_ops))
 
-def asm(lines: list[str], printOps: bool):
-    output = {}
-    linesP = []
+    asm(lines, bool(args.print_ops))
 
-    macros = {}
+def asm(lines: list[str], printOps: bool) -> dict[int, list[int]]:
+    output: dict[int, list[int]] = {}
+    linesP: list[str] = []
+
+    macros: dict[str, str] = {}
 
     # Preprocessor
     for line in lines:
