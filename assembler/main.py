@@ -3,7 +3,7 @@ from pathlib import Path
 
 labels = {}
 progCounter = -1  # Magic number
-labelCounter =  0 # Magic number
+labelCounter = 0 # Magic number
 # Counts Lines in File
 LineCounter = 0
 
@@ -14,14 +14,20 @@ class AsmApi:
     def asm_file(self, path: Path):
         with open(path, "r") as f:
             lines = f.readlines()
-            return asm(lines)
+            return asm(lines, False)
     
     """Assembles program from lines, then it should return a dict with 0b00000001: [0, 0, 0, ...]"""
     def asm_string(self, progLines: list) -> dict:
         return asm(progLines)
 
-def binPad(string, lenght=8):
-    return string.zfill(lenght)
+def binPad(val: str, lenght=8):
+    return val.zfill(lenght)
+
+def listPad(val: list, length=8):
+    while len(val) < length:
+        val = [0] + val
+    
+    return val
 
 def makeInstruction(name: str, operands: list) -> list:
     output = []
@@ -43,7 +49,7 @@ def makeInstruction(name: str, operands: list) -> list:
         "RNG": [ 1, 1, 1, 1 ],
 
         "LOD": [ 1, 0, 1, 0 ],
-        "STO": [ 1, 0, 1, 0 ],
+        "STR": [ 1, 0, 1, 0 ],
         "REQ": [ 1, 0, 1, 1 ],
         "OUT": [ 1, 0, 1, 1 ],
 
@@ -95,13 +101,13 @@ def makeInstruction(name: str, operands: list) -> list:
             case "ADI": #9
                 output = resolveImmediate(operands[1]) + registers[operands[0]]
             case "LOD": #10
-                print("")
+                output = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] #TODO: implement
             case "STR": #10
-                print("")
+                output = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] #TODO: implement
             case "REQ": #11
-                print("")
+                output = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] #TODO: implement
             case "OUT": #11
-                print("")
+                output = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] #TODO: implement
             case "CAL": #12
                 output = resolveLabel(operands[0]) + [0, 0, 0]
             case "RET": #13
@@ -132,7 +138,12 @@ def makeInstruction(name: str, operands: list) -> list:
         print(f"    Line: {cyan}{LineCounter}{rst}, Instruction {cyan}{name} {operands}{rst}")
         print(f"    Binary Instruction: {cyan}{output}{rst}")
         exit(1)
-    return output
+
+    outputFixed = []
+    for o in output:
+        outputFixed.extend([int(o)])
+
+    return outputFixed
 
 def resolveImmediate(value: str) -> list:
     out = []
@@ -145,7 +156,7 @@ def resolveImmediate(value: str) -> list:
     else:
         pass
     
-    return list(out)
+    return listPad(list(out), 8)
 
 def counter(increase: int):
     global progCounter
@@ -169,6 +180,7 @@ def resolveLabel(value: str) -> list:
     
     if value.startswith("."):
         value = value.removeprefix(".").replace("\n", "")
+    value.replace(":", "")
 
     if not value in labels:
         print("E: Syntax error, undefined label") #TODO: resolve labels at end of execution
@@ -195,11 +207,29 @@ def main():
         lines = f.readlines()
         asm(lines, bool(args.print_ops))
 
+def resetAsm():
+    # Workaround cause python is stupid
+    global labels
+    global progCounter
+    global labelCounter
+    global LineCounter
+    
+    labels = {}
+    progCounter = -1
+    labelCounter = 0
+    LineCounter = 0
+
 def asm(lines: list[str], printOps: bool):
+    resetAsm()
     output = {}
     linesP = []
 
-    macros = {}
+    macros = {
+        "call": "cal",
+        "halt": "hlt",
+        "CALL": "CAL",
+        "HALT": "HLT"
+    }
 
     # Preprocessor
     for line in lines:
@@ -228,7 +258,7 @@ def asm(lines: list[str], printOps: bool):
                 exit(1)
 
         if line.strip().startswith("."):
-            label = line.strip().removeprefix(".")
+            label = line.strip().removeprefix(".").replace(":", "")
             labels[label] = counterLabel(False)
             continue
         
@@ -259,7 +289,7 @@ def asm(lines: list[str], printOps: bool):
             logLabel = labelsSwaped[counter(False)]
         print(counter(False).replace("1", "█").replace("0", " ") + " " + d + " " + (( "".join((str(v) + " ") for v in i) ) if printOps else i[0] ) + " " + logLabel) # If label log it (labels[counter(False)] if counter(False) in labels else "")
 
-    print(".")
+    print(f". {len(output)}")
     print(labels)
     return output
 

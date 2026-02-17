@@ -1,0 +1,27 @@
+@def macro macro
+;comment
+.label:
+
+HLT
+RET
+
+RNG r1
+NOT r1 r2
+ADD r1 r2 r3
+SUB r1 r2 r3
+AND r1 r2 r3
+XOR r1 r2 r3
+NOR r1 r2 r3
+RSH r1 r2
+
+LDI r1 0x01 
+ADI r1 0x01
+
+; LOD
+; STR
+; REQ
+; OUT
+
+CAL label
+BRH label msb
+JMP label

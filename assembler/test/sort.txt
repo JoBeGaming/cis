@@ -1,0 +1,70 @@
+; Stalinsort
+
+; (c) JoBe, 2026
+
+
+; NOTE:
+;     Due to no gt, lt, ...
+;     being implemented, this
+;     algorithm only works for
+;     numbers 0 - 255, so no
+;     negatives.
+
+; Registers:
+; 0x01: Ram Start
+; 0x02: Ram Stop
+; 0x03: Remaining Addresses
+; 0x04: Highest Value
+; 0x05: Const. 1
+; 0x06: Current Address (tmp)
+; 0x07: Value of Current (tmp)
+
+.stalinsort:
+    ; PSEUDOCODE:
+    ; highest = 0
+    ; FOR ram IN RAM(start, end)
+    ;     IF ram.value < highest
+    ;         rag.value = 0
+    ;     ELSE
+    ;         highest = rag.value
+
+    ; Initialize Values:
+    req r1 p1
+    req r2 p1
+    sub r3 r2 r1
+    ldi r4 0x00 
+    ldi r5 0x01
+    call .loop
+    halt
+
+.7gt4:
+    ; Say:
+    ;  x = r4
+    ;  y = r7
+    ; If we do x - y the MSB will be turned off
+    ; if x >= y. Therefore it is on, if y > x.
+
+    sub r0 r4 r7
+    ret
+
+.setnew:
+    add r4 r7 r0
+    ret
+
+.eliminate:
+    str r0 [r6]
+    ret
+
+.loop:
+    sub r6 r2 r3
+    lod [r6] r7
+
+    ; If r7 > r4, we set r4 = r7, else str r0 [r6]
+    call .7gt4
+    ; msb flag means r7 > r4
+    brh .setnew msb
+    brh .eliminate !msb
+
+    sub r3 r3 r5
+    brh .loop !zero
+    ret
