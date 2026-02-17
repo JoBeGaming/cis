@@ -1,4 +1,4 @@
-## THE ASSMEBLER FOR THE MOST CURSED CPU EVER
+## THE ASM FOR THE MOST CURSED CPU EVER
 
 # Usage:
 
@@ -7,8 +7,6 @@ Will generate output in "out.schem"
 ` python main.py <file> <outfile>`
 Will generate output in "outfile.schem"
 
-Requiremnets:
+# Running tests:
 
-- PYTHON
-
-(if something doesnt work because versions, go figure it out yourself)
+` python test.py`
