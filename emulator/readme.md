@@ -1,7 +1,7 @@
 ## Emulator for CiS (CPU in Survival)
 
 # Requirements
-Requires Python, and the packages in requirements.txt.
+Requires Python, and knowledge of the assembly code of CiS (see down below).
 
 # Usage:
 There are 3 tabs in the main code space (on the left half).

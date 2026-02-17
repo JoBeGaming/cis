@@ -1,22 +1,48 @@
-import re
+"""
+TODO: Add ports and I/O functions, add settings and memory tab, and add the assembly thigny
+"""
+
+#========== Imports ==========#
 import tkinter as tk
 from tkinter import ttk
 import tkinter.font as tkfont
 
+#========== Initializations ==========#
 window = tk.Tk()
 
-##### VARIABLES #####
+#========== Classes ==========#
+
+#========== Variables ==========#
+
+# Colors
 black = "#000000"
 dark_gray = "#37353E"
 light_gray = "#44444E"
 brown = "#715A5A"
 white = "#D3DAD9"
+
+# Code colors
+code_color_bg = "#1E1E1E"
+code_color_fg = "#D4D4D4"
+code_color_opcode = "#569CD6"
+code_color_register = "#4EC9B0"
+code_color_ram = "#CE9178"
+code_color_immediate = "#B5CEA8"
+code_color_comment = "#6A9955"
+code_color_label = "#C586C0"
+code_color_flag = "#EBEB99"
+code_color_port = "#9CDCFE"
+code_color_error = "#F14C4C"
+
+# Fonts
 consolas = tkfont.Font(family="Consolas", size=12)
+
+# Other variables
 current_tab = "CPU_code"
 
-instructions = [
+opcodes = [
     "NOP",
-    "HLT", "HALT", # both of these works
+    "HALT", "HLT", # aliases
     "NOT",
     "ADD",
     "SUB",
@@ -30,7 +56,7 @@ instructions = [
     "STR",
     "REQ",
     "OUT",
-    "CAL", "CALL", # both of these works
+    "CALL", "CAL", # aliases
     "RET",
     "BRH",
     "RNG"
@@ -49,180 +75,133 @@ flags = [
 
 registers = {f"r{i+1}": 0 for i in range(7)}
 ram = {f"[{i}]": 0 for i in range(64)}
+call_stack = []
 code = "; Insert your assembly code for CiS here!" # The code in the program
 
-##### WINDOW INITIALIZATION #####
+#========== Window configurations ==========#
 window.geometry("1280x720")
 window.title("CiS Emulator")
 window.configure(bg=dark_gray)
 
-##### FRAMES #####
+#========== Frames & Tabs ==========#
+
+# Main CPU functions
 CPU_frame = tk.Frame(window, bg=dark_gray)
-CPU_frame.pack(fill=tk.BOTH, side=tk.LEFT, expand=True)
+CPU_frame.pack(side="left", fill="both", expand=True)
 CPU_frame.pack_propagate(False)
 
+# The I/O functions
 IO_frame = tk.Frame(window, bg=light_gray)
-IO_frame.pack(fill=tk.BOTH, side=tk.LEFT, expand=True)
+IO_frame.pack(side="left", fill="both", expand=True)
 IO_frame.pack_propagate(False)
 
-##### TABS #####
+# The CPU tabs
+CPU_tabs = tk.Frame(CPU_frame, bg=dark_gray)
+CPU_tabs.pack(side="top", fill="x")
 
+# Code tab - where the user can write code or import code
+CPU_code = tk.Button(CPU_tabs, text="Code", bg=white, fg=black, font=consolas, command=lambda: update_current_tab("CPU_code"), bd=0)
+CPU_code.pack(side="left", fill="x", expand=True)
+
+# Memory tab - where the user can see the registers, ram and call stack
+CPU_memory = tk.Button(CPU_tabs, text="Memory", bg=white, fg=black, font=consolas, command=lambda: update_current_tab("CPU_memory"), bd=0)
+CPU_memory.pack(side="left", fill="x", expand=True)
+
+# Settings tab - where the user can change the settings of the CPU e.g. the clock speed
+CPU_settings = tk.Button(CPU_tabs, text="Settings", bg=white, fg=black, font=consolas, command=lambda: update_current_tab("CPU_settings"), bd=0)
+CPU_settings.pack(side="left", fill="x", expand=True)
+
+# update_current_tab(tab) is called to update the current tab that is on the screen
 def update_current_tab(tab):
     global current_tab
     current_tab = tab
     update_tabs_on_screen()
 
-CPU_tabs = tk.Frame(CPU_frame, bg=dark_gray)
-CPU_tabs.pack(side="top", fill="x")
-
-CPU_code = tk.Button(CPU_tabs, text="Code", bg=white, fg=black, font=consolas, command=lambda: update_current_tab("CPU_code"), bd=0)
-CPU_code.pack(side="left", fill="x", expand=True)
-
-CPU_memory = tk.Button(CPU_tabs, text="Memory", bg=white, fg=black, font=consolas, command=lambda: update_current_tab("CPU_memory"), bd=0)
-CPU_memory.pack(side="left", fill="x", expand=True)
-
-CPU_settings = tk.Button(CPU_tabs, text="Settings", bg=white, fg=black, font=consolas, command=lambda: update_current_tab("CPU_settings"), bd=0)
-CPU_settings.pack(side="left", fill="x", expand=True)
-
-#===== TABS =====#
-def update_memory():
-    # If the current tab isnt CPU_memory then return
-    if current_tab != "CPU_memory":
-        return
-    
-    # Destroy all the widgets
-    for widget in register_frame.winfo_children():
-        widget.destroy()
-    for widget in ram_frame.winfo_children():
-        widget.destroy()
-
-    # Create the labels
-    for reg in registers:
-        reg_label = tk.Label(register_frame, text=f"{reg}: {registers[reg]}", bg=brown, fg=white, font=consolas, anchor="w")
-        reg_label.pack(side="top", fill="x")
-    for ram_index in ram:
-        ram_label = tk.Label(ram_frame, text=f"{ram_index}: {ram[ram_index]}", bg=dark_gray, fg=white, font=consolas, anchor="w")
-        ram_label.pack(side="top", fill="x")
-
-    window.after(100, update_memory)
-
+# update_tabs_on_screen() is called to update the widgets that is being shown on the screen
 def update_tabs_on_screen():
-    global registers
-    # Destroy all the widgets
+
+    # Destroy all the current widgets on screen to replace them
     for widget in CPU_frame.winfo_children():
-        if widget not in [CPU_tabs]:
+        # If the widget isn't the CPU tabs, destroy it
+        if widget != CPU_tabs:
             widget.destroy()
     
-    CPU_code.configure(bg=white, fg=black)
-    CPU_memory.configure(bg=white, fg=black)
-    CPU_settings.configure(bg=white, fg=black)
+    # Reset the CPU tab buttons
+    for tab in CPU_tabs.winfo_children():
+        tab.configure(bg=white, fg=black)
+    
+    # Switch between the tabs
+    match current_tab:
 
-    if current_tab == "CPU_code":
-        global CPU_code_content
+        # Code tab - all variables here and functions should start with "CPU_code"
+        case "CPU_code":
+            # Global variables
+            global CPU_code_textbox
 
-        # Change button color
-        CPU_code.configure(bg=black, fg=white)
+            # Change the button color
+            CPU_code.configure(bg=black, fg=white)
 
-        CPU_code_run = tk.Button(CPU_frame, text="Run Code", bg=white, fg=black, font=consolas, bd=0)
-        CPU_code_run.pack(side="top", fill="x")
+            # Run button - runs the current program in the textbox
+            CPU_code_run = tk.Button(CPU_frame, text="Run Code", bg=white, fg=black, font=consolas, bd=0)
+            CPU_code_run.pack(side="top", fill="x")
 
-        CPU_code_content = tk.Text(CPU_frame, bg=dark_gray, fg="#D4D4D4", font=consolas, bd=0)
-        CPU_code_content.pack(side="top", fill="both", expand=True)
+            # Import button - imports a .cis file and puts the code into the textbox
+            CPU_code_import = tk.Button(CPU_frame, text="Import Code", bg=white, fg=black, font=consolas, bd=0)
+            CPU_code_import.pack(side="top", fill="x")
 
-        # After each key release save the code
-        def save_code(event):
-            global code
-            code = CPU_code_content.get("1.0", tk.END)
+            # Save button - saves the code in the textbox to a .cis file
+            CPU_code_save = tk.Button(CPU_frame, text="Save Code", bg=white, fg=black, font=consolas, bd=0)
+            CPU_code_save.pack(side="top", fill="x")
 
-        CPU_code_content.bind("<KeyRelease>", save_code)
-        CPU_code_content.bind("<KeyRelease>", syntax_highlighting)
+            # Textbox - where people can write code and run/save it
+            CPU_code_textbox = tk.Text(CPU_frame, bg=code_color_bg, fg=code_color_fg, font=consolas, insertbackground=code_color_fg, bd=0)
+            CPU_code_textbox.pack(side="top", fill="both", expand=True)
 
-        # Placeholder text
-        CPU_code_content.insert("1.0", code)
-        syntax_highlighting()
+            # Create tags for the syntax highlighting
+            CPU_code_textbox.tag_configure("opcode", foreground=code_color_opcode)
+            CPU_code_textbox.tag_configure("register", foreground=code_color_register)
+            CPU_code_textbox.tag_configure("ram", foreground=code_color_ram)
+            CPU_code_textbox.tag_configure("immediate", foreground=code_color_immediate)
+            CPU_code_textbox.tag_configure("comment", foreground=code_color_comment)
+            CPU_code_textbox.tag_configure("label", foreground=code_color_label)
+            CPU_code_textbox.tag_configure("flag", foreground=code_color_flag)
+            CPU_code_textbox.tag_configure("port", foreground=code_color_port)
+            CPU_code_textbox.tag_configure("error", underline=True, underlinefg=code_color_error)
 
-        # Colors for syntax highlighting (got this from chatgpt aswell and edited it a bit :3)
-        CPU_code_content.tag_configure("opcode", foreground="#569CD6")
-        CPU_code_content.tag_configure("register", foreground="#4EC9B0")
-        CPU_code_content.tag_configure("ram", foreground="#CE9178")
-        CPU_code_content.tag_configure("immediate", foreground="#B5CEA8")
-        CPU_code_content.tag_configure("comment", foreground="#6A9955")
-        CPU_code_content.tag_configure("label", foreground="#C586C0")
-        CPU_code_content.tag_configure("default", foreground="#D4D4D4")
-        CPU_code_content.tag_configure("flag", foreground="#EBEB99")
-    elif current_tab == "CPU_memory":
-        # Mostly gets handled by update_memory()
-        global register_frame, ram_frame
+            # CPU_code_save_code() is called to save the code in the textbox to the code variable
+            def CPU_code_save_code():
+                global code
+                code = CPU_code_textbox.get("1.0", "end")
+            
+            CPU_code_textbox.bind("<KeyRelease>", CPU_code_save_code)
+            CPU_code_textbox.bind("<KeyRelease>", syntax_highlighting)
 
-        # Change button color
-        CPU_memory.configure(bg=black, fg=white)
+            # Load the code variable into the textbox
+            CPU_code_textbox.insert("1.0", code)
+            syntax_highlighting(True) # Call syntax_highlighting() since the text won't get updated automatically
 
-        # Make frames and make ram scrollable
+        # Memory tab - displays the current values in registers, ram and the call stack
 
-        # Add the titles to here
-        reg_title = tk.Label(CPU_frame, text="Registers", bg=black, fg=white, font=consolas)
-        reg_title.pack(side="top", fill="x")
+#========== Other Functions ==========#
 
-        register_frame = tk.Frame(CPU_frame, bg=dark_gray)
-        register_frame.pack(side="top", fill="x")
-        
-        ram_title = tk.Label(CPU_frame, text="RAM", bg=black, fg=white, font=consolas)
-        ram_title.pack(side="top", fill="x")
-        
-        parent_ram_canvas = tk.Canvas(CPU_frame, bg=dark_gray, highlightthickness=0, bd=0)
-        parent_ram_canvas.pack(side="left", fill="both", expand=True)
-        ram_scrollbar = ttk.Scrollbar(parent_ram_canvas, orient="vertical", command=parent_ram_canvas.yview)
-        ram_scrollbar.pack(side="right", fill="y")
-
-        ram_frame = tk.Frame(parent_ram_canvas, bg=dark_gray, bd=0)
-        ram_frame.bind("<Configure>", lambda e: parent_ram_canvas.configure(yscrollcommand=ram_scrollbar.set, scrollregion=parent_ram_canvas.bbox("all")))
-
-        center_y = ram_frame.winfo_screenheight() / 2
-        parent_ram_canvas.create_window((0, center_y), window=ram_frame, anchor="n")
-
-        def on_mouse_wheel(event):
-            parent_ram_canvas.yview_scroll(-1 * int((event.delta / 120)), "units")
-        parent_ram_canvas.bind_all("<MouseWheel>", on_mouse_wheel)
-        
-        update_memory()
-
-    elif current_tab == "CPU_settings":
-        # Change button color
-        CPU_settings.configure(bg=black, fg=white)
-
-#===== CPU CODE TAB =====#
-# i used chatgpt for this
-def syntax_highlighting(event = None):
-    # If current tab isn't code then break
+# syntax_highlighting(all) is called to update the colors of the code in the textbox
+# If all is true, it will update the colors on every line
+def syntax_highlighting(all=False):
+    # If the current tab isn't the code tab, return
     if current_tab != "CPU_code":
         return
-
-    # Save current selection
+    
+    # Save the current selection (if there is one) and cursor
     try:
-        selection_start = CPU_code_content.index("sel.first")
-        selection_end = CPU_code_content.index("sel.last")
+        selection_start = CPU_code_textbox.index("sel.first")
+        selection_end = CPU_code_textbox.index("sel.last")
     except tk.TclError:
         selection_start = None
         selection_end = None
-    
-    cursor_pos = CPU_code_content.index("insert")
+    cursor_pos = CPU_code_textbox.index("insert")
 
-    # Remove tags
-    for tag in CPU_code_content.tag_names():
-        CPU_code_content.tag_remove(tag, "1.0", tk.END)
-
-    # Restore selection
-    if selection_start and selection_end:
-        CPU_code_content.tag_add("sel", selection_start, selection_end)
-
-    # Restore cursor
-    CPU_code_content.mark_set("insert", cursor_pos)
-
-    # Get the code text and split into lines
-    CPU_code_content_text = CPU_code_content.get("1.0", tk.END)
-    CPU_code_content_text_lines = CPU_code_content_text.splitlines()
-
-    for line_idx, line in enumerate(CPU_code_content_text_lines):
+    # syntax_line(line, line_index) is called to update only one line
+    def syntax_line(line, line_index):
         # Current column
         cur_col = 0
 
@@ -230,47 +209,85 @@ def syntax_highlighting(event = None):
         words = line.split()
 
         for word in words:
+            # Get the column of the start of the word and the end of the word
             start_col = line.find(word, cur_col)
             end_col = start_col + len(word)
 
-            start_index = f"{line_idx + 1}.{start_col}"
-            end_index = f"{line_idx + 1}.{end_col}"
+            # Get the index of the start and end of the word using the line index
+            start_index = f"{line_index + 1}.{start_col}"
+            end_index = f"{line_index + 1}.{end_col}"
 
-            # Check if the word is a comment
+            # If the word is a comment, color the comment with the comment tag and break
             if word[0] == ";":
-                CPU_code_content.tag_add("comment", start_index, f"{line_idx + 1}.end")
+                CPU_code_textbox.tag_add("comment", start_index, f"{line_index + 1}.end") # Color the entire line
                 break
 
-            # === These checks are for words that are only able to be written once in a line, so we don't need to check them with regex
-            # If word is instruction
-            if word.upper() in instructions:
-                CPU_code_content.tag_add("opcode", start_index, end_index)
+            # If the word is an opcode
+            if word.upper() in opcodes:
+                CPU_code_textbox.tag_add("opcode", start_index, end_index)
             
-            # If word is an immediate
-            elif word[:2] == "0d" or word[:2] == "0b" or word[:2] == "0x":
-                CPU_code_content.tag_add("immediate", start_index, end_index)
+            # If the word is an immediate
+            elif word[:2] == "0x" or word[:2] == "0b" or word[:2] == "0d" or word.isdigit():
+                CPU_code_textbox.tag_add("immediate", start_index, end_index)
             
-            # If word is a flag
+            # If the word is a flag
             elif word.upper() in flags:
-                CPU_code_content.tag_add("flag", start_index, end_index)
+                CPU_code_textbox.tag_add("flag", start_index, end_index)
             
-            # If word is a label
-            elif word[0] == ".":
-                CPU_code_content.tag_add("label", start_index, end_index)
-            
-            # If word is a RAM
+            # If the word is RAM
             elif word[0] == "[" and word[-1] == "]":
-                CPU_code_content.tag_add("ram", start_index, end_index)
-
-            # For registers
-            for match in re.finditer(r"\br\d+\b", line, re.IGNORECASE):
-                start = f"{line_idx + 1}.{match.start()}"
-                end = f"{line_idx + 1}.{match.end()}"
-
-                CPU_code_content.tag_add("register", start, end)
+                CPU_code_textbox.tag_add("ram", start_index, end_index)
             
-            col = end_col  # move forward so duplicates work correctly
+            # If the word is a register
+            elif word in registers or word == "r0": # Special case since r0 can't be written to
+                CPU_code_textbox.tag_add("register", start_index, end_index)
+            
+            # If the word is a label
+            elif word[0] == ".":
+                CPU_code_textbox.tag_add("label", start_index, end_index)
+            
+            # If the word is a port
+            elif word[0] == "p": #TODO: replace this with "if word in ports"
+                CPU_code_textbox.tag_add("port", start_index, end_index)
+            
+            # Otherwise, it's an error
+            else:
+                CPU_code_textbox.tag_add("error", start_index, end_index)
+            
+            cur_col = end_col # Move the current column to the end of the word so that duplicates work correctly
 
+
+    # If all is true, reset everything
+    if all:
+        # Remove all tags
+        for tag in CPU_code_textbox.tag_names():
+            CPU_code_textbox.tag_remove(tag, "1.0", "end")
+        
+        # Split the code into lines and update each seperately
+        lines = CPU_code_textbox.get("1.0", "end").splitlines()
+        for line_idx, line in enumerate(lines):
+            syntax_line(line, line_idx)
+    
+    # Otherwise, only reset the current line
+    else:
+        # Get the current line index
+        line_index = int(CPU_code_textbox.index("insert").split(".")[0]) - 1
+
+        # Get the current line
+        line = CPU_code_textbox.get(f"{line_index + 1}.0", f"{line_index + 1}.end")
+
+        # Remove all tags from the current line
+        for tag in CPU_code_textbox.tag_names():
+            CPU_code_textbox.tag_remove(tag, f"{line_index + 1}.0", f"{line_index + 1}.end")
+        
+        # Update the current line
+        syntax_line(line, line_index)
+    
+    # Restore the selection and cursor
+    if selection_start and selection_end:
+        CPU_code_textbox.tag_add("sel", selection_start, selection_end)
+    CPU_code_textbox.mark_set("insert", cursor_pos)
+
+#========== Main functions ==========#
 update_tabs_on_screen()
-syntax_highlighting()
 window.mainloop()

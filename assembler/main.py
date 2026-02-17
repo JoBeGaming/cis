@@ -1,5 +1,6 @@
-import argparse
 from pathlib import Path
+import argparse
+
 
 labels = {}
 progCounter = -1  # Magic number
@@ -11,28 +12,31 @@ class AsmApi:
     def __init__(self):
         pass
     
-    def asm_file(self, path: Path):
+    def asm_file(self, path: Path) -> ...:
         with open(path, "r") as f:
             lines = f.readlines()
             return asm(lines, False)
     
-    """Assembles program from lines, then it should return a dict with 0b00000001: [0, 0, 0, ...]"""
-    def asm_string(self, progLines: list) -> dict:
+    def asm_string(self, progLines: list) -> dict[int, list[int]]:
+        """
+        Assembles program from lines, returning a dict with 0b00000001: [0, 0, 0, ...]
+        """
+
         return asm(progLines)
 
-def binPad(val: str, lenght=8):
+def binPad(val: str, lenght=8) -> str:
     return val.zfill(lenght)
 
-def listPad(val: list, length=8):
+def listPad(val: list, length=8) -> str:
     while len(val) < length:
         val = [0] + val
     
     return val
 
-def makeInstruction(name: str, operands: list) -> list:
-    output = []
+def makeInstruction(name: str, operands: list[str]) -> list[int]:
+    output: list[int] = []
 
-    opcodes = {
+    opcodes: dict[str, list[int]] = {
         "HLT": [ 0, 0, 0, 0 ],
         "NOT": [ 0, 0, 0, 1 ],
         "ADD": [ 0, 0, 1, 0 ],
@@ -56,7 +60,7 @@ def makeInstruction(name: str, operands: list) -> list:
         "JMP": [ 1, 1, 1, 0 ]
     }
 
-    registers = {
+    registers: dict[str, list[int]] = {
         "0":  [ 0, 0, 0],
         "r0": [ 0, 0, 0],
         "r1": [ 0, 0, 1],
@@ -68,7 +72,7 @@ def makeInstruction(name: str, operands: list) -> list:
         "r7": [ 1, 1, 1],
     }
 
-    flags = {
+    flags: dict[str, list[int]] = {
         "true":  [ 0, 0, 0],
         "msb":   [ 0, 0, 1],
         "zero":  [ 0, 1, 0],
@@ -79,7 +83,7 @@ def makeInstruction(name: str, operands: list) -> list:
         "!cout": [ 1, 1, 1]
     }
 
-    opcode = opcodes[name]
+    opcode: list[int] = opcodes[name]
     
     match name:
             case "NOT": #1
@@ -145,7 +149,7 @@ def makeInstruction(name: str, operands: list) -> list:
 
     return outputFixed
 
-def resolveImmediate(value: str) -> list:
+def resolveImmediate(value: str) -> str:
     out = []
     if value.startswith("0d"):
         out = bin(int(value.replace("0d", ""), 10)).replace("0b", "")
@@ -158,7 +162,7 @@ def resolveImmediate(value: str) -> list:
     
     return listPad(list(out), 8)
 
-def counter(increase: int):
+def counter(increase: int) -> str:
     global progCounter
 
     if increase:
@@ -166,7 +170,7 @@ def counter(increase: int):
     
     return "b" + binPad(bin(progCounter).replace("0b", ""))
 
-def counterLabel(increase: int):
+def counterLabel(increase: int) -> str:
     global labelCounter
 
     if increase:
@@ -174,8 +178,8 @@ def counterLabel(increase: int):
     
     return "b" + binPad(bin(labelCounter).replace("0b", ""))
 
-def resolveLabel(value: str) -> list:
-    if ( value.startswith("0x") or value.startswith("0d") or value.startswith("0b") ):
+def resolveLabel(value: str) -> list[str]:
+    if value.startswith("0x") or value.startswith("0d") or value.startswith("0b"):
         return resolveImmediate(value)
     
     if value.startswith("."):
@@ -189,14 +193,14 @@ def resolveLabel(value: str) -> list:
 
     return list(labels[value].replace("b", ""))
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         prog="cis-asm",
         description="CPU in Surival - Assembler"
     )
     parser.add_argument("input_file")
     parser.add_argument("--out", help="Output file")
-    parser.add_argument("--print-ops", help="Print full instruction input")
+    parser.add_option("--print-ops", help="Print full instruction input") # should be right idk
     args = parser.parse_args()
 
     if not Path(args.input_file).exists():
@@ -205,7 +209,6 @@ def main():
     
     with open(args.input_file, "r") as f:
         lines = f.readlines()
-        asm(lines, bool(args.print_ops))
 
 def resetAsm():
     # Workaround cause python is stupid
@@ -219,12 +222,12 @@ def resetAsm():
     labelCounter = 0
     LineCounter = 0
 
-def asm(lines: list[str], printOps: bool):
+def asm(lines: list[str], printOps: bool) -> dict[str, list[int]]:
     resetAsm()
-    output = {}
-    linesP = []
+    output: dict[str, list[int]] = {}
+    linesP: list[str] = []
 
-    macros = {
+    macros: dict[str, str] = {
         "call": "cal",
         "halt": "hlt",
         "CALL": "CAL",
@@ -239,7 +242,7 @@ def asm(lines: list[str], printOps: bool):
                 continue
         
         if line.strip().startswith("@"):
-            macro = line.strip().removeprefix("@").replace("\n", "").split(" ")
+            macro = line.strip().removeprefix("@").replace("\n", "").split()
 
             if macro[0] == "def":
                 if not (len(macro) - 1) == 2:
