@@ -52,7 +52,7 @@ opcodes = [
     "RSH",
     "LDI",
     "ADI",
-    "LOD",
+    "LFR",
     "STR",
     "REQ",
     "OUT",
@@ -63,7 +63,7 @@ opcodes = [
 ]
 
 flags = [
-    "JMP",
+    "JMP", "TRUE" # aliases
     "ZERO",
     "!ZERO",
     "COUT",
@@ -75,7 +75,8 @@ flags = [
 
 registers = {f"r{i+1}": 0 for i in range(7)}
 ram = {f"[{i}]": 0 for i in range(64)}
-call_stack = []
+ports = {f"p{i}": 0 for i in range(4)}
+call_stack = ["" for i in range(8)]
 code = "; Insert your assembly code for CiS here!" # The code in the program
 
 #========== Window configurations ==========#
@@ -100,25 +101,23 @@ CPU_tabs = tk.Frame(CPU_frame, bg=dark_gray)
 CPU_tabs.pack(side="top", fill="x")
 
 # Code tab - where the user can write code or import code
-CPU_code = tk.Button(CPU_tabs, text="Code", bg=white, fg=black, font=consolas, command=lambda: update_current_tab("CPU_code"), bd=0)
+CPU_code = tk.Button(CPU_tabs, text="Code", bg=white, fg=black, font=consolas, command=lambda: update_tabs_on_screen("CPU_code"), bd=0)
 CPU_code.pack(side="left", fill="x", expand=True)
 
 # Memory tab - where the user can see the registers, ram and call stack
-CPU_memory = tk.Button(CPU_tabs, text="Memory", bg=white, fg=black, font=consolas, command=lambda: update_current_tab("CPU_memory"), bd=0)
+CPU_memory = tk.Button(CPU_tabs, text="Memory", bg=white, fg=black, font=consolas, command=lambda: update_tabs_on_screen("CPU_memory"), bd=0)
 CPU_memory.pack(side="left", fill="x", expand=True)
 
 # Settings tab - where the user can change the settings of the CPU e.g. the clock speed
-CPU_settings = tk.Button(CPU_tabs, text="Settings", bg=white, fg=black, font=consolas, command=lambda: update_current_tab("CPU_settings"), bd=0)
+CPU_settings = tk.Button(CPU_tabs, text="Settings", bg=white, fg=black, font=consolas, command=lambda: update_tabs_on_screen("CPU_settings"), bd=0)
 CPU_settings.pack(side="left", fill="x", expand=True)
 
-# update_current_tab(tab) is called to update the current tab that is on the screen
-def update_current_tab(tab):
+# update_tabs_on_screen() is called to update the widgets that is being shown on the screen
+def update_tabs_on_screen(tab):
+
+    # Update the current tab variable
     global current_tab
     current_tab = tab
-    update_tabs_on_screen()
-
-# update_tabs_on_screen() is called to update the widgets that is being shown on the screen
-def update_tabs_on_screen():
 
     # Destroy all the current widgets on screen to replace them
     for widget in CPU_frame.winfo_children():
@@ -181,6 +180,63 @@ def update_tabs_on_screen():
             syntax_highlighting(True) # Call syntax_highlighting() since the text won't get updated automatically
 
         # Memory tab - displays the current values in registers, ram and the call stack
+        case "CPU_memory":
+            # Global variables
+            global registers_frame, ram_frame, call_stack_frame
+
+            # Change the button color
+            CPU_memory.configure(bg=black, fg=white)
+
+            # Create the registers, ram and call stack labels and frames
+            registers_label = tk.Label(CPU_frame, text="Registers", bg=dark_gray, fg=white, font=consolas)
+            registers_frame = tk.Frame(CPU_frame, bg=dark_gray)
+            registers_label.pack(side="top", fill="x")
+            registers_frame.pack(side="top", fill="x")
+
+
+            # The ram frame is too small, so we make it scrollable
+            # The label
+            ram_label = tk.Label(CPU_frame, text="RAM", bg=light_gray, fg=white, font=consolas)
+            ram_label.pack(side="top", fill="x")
+            
+            # The parent ram to store the canvas
+            # Height must be preset so no bleeding occurs
+            ram_canvas_container = tk.Frame(CPU_frame, height=200)
+            ram_canvas_container.pack_propagate(False)
+            ram_canvas_container.pack(side="top", fill="both", expand=True)
+
+            # The canvas (for the frame and scrollbar)
+            parent_ram_canvas = tk.Canvas(ram_canvas_container, bg=light_gray, highlightthickness=0, bd=0)
+            parent_ram_canvas.pack(side="top", fill="both", expand=True)
+
+            # The scrollbar
+            ram_scrollbar = ttk.Scrollbar(parent_ram_canvas, orient="vertical", command=parent_ram_canvas.yview)
+            ram_scrollbar.pack(side="right", fill="y")
+
+            # The actual frame
+            ram_frame = tk.Frame(parent_ram_canvas, bg=dark_gray, bd=0)
+            ram_frame.bind("<Configure>", lambda e: parent_ram_canvas.configure(yscrollcommand=ram_scrollbar.set, scrollregion=parent_ram_canvas.bbox("all")))
+
+            # Create the frame in the canvas
+            parent_ram_canvas.create_window((0, 0), window=ram_frame, anchor="nw")
+
+            # Mouse scrolling function
+            def mouse_scrolling(event):
+                parent_ram_canvas.yview_scroll(-1 * int((event.delta / 120)), "units")
+            
+            # Make the frame scrollable
+            parent_ram_canvas.bind("<Enter>", lambda e: parent_ram_canvas.bind_all("<MouseWheel>", mouse_scrolling))
+            parent_ram_canvas.bind("<Leave>", lambda e: parent_ram_canvas.unbind_all("<MouseWheel>"))
+
+
+            # Back to the call stack
+            call_stack_label = tk.Label(CPU_frame, text="Call Stack", bg=dark_gray, fg=white, font=consolas)
+            call_stack_frame = tk.Frame(CPU_frame, bg=dark_gray)
+            call_stack_label.pack(side="top", fill="x")
+            call_stack_frame.pack(side="top", fill="x")
+
+            update_memory()
+
 
 #========== Other Functions ==========#
 
@@ -239,7 +295,7 @@ def syntax_highlighting(all=False):
                 CPU_code_textbox.tag_add("ram", start_index, end_index)
             
             # If the word is a register
-            elif word in registers or word == "r0": # Special case since r0 can't be written to
+            elif word.lower() in registers or word.lower() == "r0": # Special case since r0 can't be written to
                 CPU_code_textbox.tag_add("register", start_index, end_index)
             
             # If the word is a label
@@ -247,7 +303,7 @@ def syntax_highlighting(all=False):
                 CPU_code_textbox.tag_add("label", start_index, end_index)
             
             # If the word is a port
-            elif word[0] == "p": #TODO: replace this with "if word in ports"
+            elif word.lower() in ports:
                 CPU_code_textbox.tag_add("port", start_index, end_index)
             
             # Otherwise, it's an error
@@ -255,7 +311,6 @@ def syntax_highlighting(all=False):
                 CPU_code_textbox.tag_add("error", start_index, end_index)
             
             cur_col = end_col # Move the current column to the end of the word so that duplicates work correctly
-
 
     # If all is true, reset everything
     if all:
@@ -288,6 +343,39 @@ def syntax_highlighting(all=False):
         CPU_code_textbox.tag_add("sel", selection_start, selection_end)
     CPU_code_textbox.mark_set("insert", cursor_pos)
 
+# update_memory(type) is called to update the memory in the memory tab once registers, ram or call stack have been updated
+# If type is true, updates all tabs
+def update_memory(update_type="all"):
+    # If the current tab isn't the memory tab, return
+    if current_tab != "CPU_memory":
+        return
+    
+    # Otherwise, delete all widgets except for the labels
+    for widget in registers_frame.winfo_children():
+        widget.destroy()
+    for widget in ram_frame.winfo_children():
+        widget.destroy()
+    for widget in call_stack_frame.winfo_children():
+        widget.destroy()
+    
+    # Create register labels
+    if update_type == "register" or update_type == "all":
+        for register_idx in registers:
+            register_label = tk.Label(registers_frame, text=f"{register_idx}: {registers[register_idx]}", bg=dark_gray, fg=white, font=consolas, anchor="w")
+            register_label.pack(side="top", fill="x")
+    
+    # Create ram labels
+    if update_type == "ram" or update_type == "all":
+        for ram_idx in ram:
+            ram_label = tk.Label(ram_frame, text=f"{ram_idx}: {ram[ram_idx]}", bg=light_gray, fg=white, font=consolas, anchor="w")
+            ram_label.pack(side="top", fill="x")
+    
+    # Create register labels
+    if update_type == "call_stack" or update_type == "all":
+        for call_stack_idx in range(len(call_stack)):
+            call_stack_label = tk.Label(call_stack_frame, text=f"{call_stack[call_stack_idx]}a", bg=dark_gray, fg=white, font=consolas, anchor="w")
+            call_stack_label.pack(side="top", fill="x")
+
 #========== Main functions ==========#
-update_tabs_on_screen()
+update_tabs_on_screen(current_tab)
 window.mainloop()
