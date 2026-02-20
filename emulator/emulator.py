@@ -6,6 +6,7 @@ TODO: Add ports and I/O functions, add settings and memory tab, and add the asse
 import tkinter as tk
 from tkinter import ttk
 import tkinter.font as tkfont
+from tkinter import filedialog
 
 #========== Initializations ==========#
 window = tk.Tk()
@@ -39,6 +40,8 @@ consolas = tkfont.Font(family="Consolas", size=12)
 
 # Other variables
 current_tab = "CPU_code"
+saved = False # See if the code in the textbox is saved
+save_file = ""
 
 opcodes = [
     "NOP",
@@ -81,7 +84,7 @@ code = "; Insert your assembly code for CiS here!" # The code in the program
 
 #========== Window configurations ==========#
 window.geometry("1280x720")
-window.title("CiS Emulator")
+window.title("CiS Emulator - Untitled")
 window.configure(bg=dark_gray)
 
 #========== Frames & Tabs ==========#
@@ -145,11 +148,15 @@ def update_tabs_on_screen(tab):
             CPU_code_run.pack(side="top", fill="x")
 
             # Import button - imports a .cis file and puts the code into the textbox
-            CPU_code_import = tk.Button(CPU_frame, text="Import Code", bg=white, fg=black, font=consolas, bd=0)
+            CPU_code_import = tk.Button(CPU_frame, text="Import Code", bg=white, fg=black, font=consolas, bd=0, command=import_code)
             CPU_code_import.pack(side="top", fill="x")
 
-            # Save button - saves the code in the textbox to a .cis file
-            CPU_code_save = tk.Button(CPU_frame, text="Save Code", bg=white, fg=black, font=consolas, bd=0)
+            # Save button - saves the code in the textbox to a .txt file or to the current file that was imported/saved to
+            CPU_code_save = tk.Button(CPU_frame, text="Save Code", bg=white, fg=black, font=consolas, bd=0, command=lambda: save_code("current"))
+            CPU_code_save.pack(side="top", fill="x")
+
+            # Save As button - saves the code in the textbox to a .txt file but as a different file
+            CPU_code_save = tk.Button(CPU_frame, text="Save Code As", bg=white, fg=black, font=consolas, bd=0, command=save_code)
             CPU_code_save.pack(side="top", fill="x")
 
             # Textbox - where people can write code and run/save it
@@ -168,12 +175,23 @@ def update_tabs_on_screen(tab):
             CPU_code_textbox.tag_configure("error", underline=True, underlinefg=code_color_error)
 
             # CPU_code_save_code() is called to save the code in the textbox to the code variable
-            def CPU_code_save_code():
+            def CPU_code_save_code(event):
                 global code
                 code = CPU_code_textbox.get("1.0", "end")
+                
+                # If the save_file is empty, make the title Untitled
+                if not save_file:
+                    window.title(f"CiS Emulator - Untitled*")
+                
+                # Otherwise make it the file path
+                else:
+                    window.title(f"CiS Emulator - {save_file}*")
             
-            CPU_code_textbox.bind("<KeyRelease>", CPU_code_save_code)
-            CPU_code_textbox.bind("<KeyRelease>", syntax_highlighting)
+            # Binding
+            CPU_code_textbox.bind("<KeyRelease>", CPU_code_save_code, add="+")
+            CPU_code_textbox.bind("<KeyRelease>", syntax_highlighting, add="+")
+            # If the text is pasted it wont update
+            CPU_code_textbox.bind("<<Paste>>", lambda e: window.after(1, lambda: syntax_highlighting(True)), add="+")
 
             # Load the code variable into the textbox
             CPU_code_textbox.insert("1.0", code)
@@ -236,6 +254,11 @@ def update_tabs_on_screen(tab):
             call_stack_frame.pack(side="top", fill="x")
 
             update_memory()
+        
+        # Settings tab - the settings of the CPU
+        case "CPU_settings":
+            # Change the button color
+            CPU_settings.configure(bg=black, fg=white)
 
 
 #========== Other Functions ==========#
@@ -373,8 +396,71 @@ def update_memory(update_type="all"):
     # Create register labels
     if update_type == "call_stack" or update_type == "all":
         for call_stack_idx in range(len(call_stack)):
-            call_stack_label = tk.Label(call_stack_frame, text=f"{call_stack[call_stack_idx]}a", bg=dark_gray, fg=white, font=consolas, anchor="w")
+            call_stack_label = tk.Label(call_stack_frame, text=f"{call_stack[call_stack_idx]}", bg=dark_gray, fg=white, font=consolas, anchor="w")
             call_stack_label.pack(side="top", fill="x")
+
+# save_code() is called to save the current code in the textbox
+def save_code(save_type=None):
+    # Global variables
+    global save_file
+
+    # If it's not the code tab, return
+    if current_tab != "CPU_code":
+        return
+
+    # If save_type doesn't have a value or it has a value and the save_file is empty, open the file explorer
+    if not save_type or (save_type and not save_file): 
+        ask_file_path = filedialog.asksaveasfilename(
+            filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")]
+        )
+        # If ask_file_path exists, set save_file to the ask_file_path
+        if ask_file_path:
+            save_file = ask_file_path
+            # If the file doesn't have the .txt extension
+            if ask_file_path[len(ask_file_path) - 4:] != ".txt":
+                save_file += ".txt" # Add extension
+        
+        # Otherwise return
+        else:
+            return
+    
+    # Set the window title to the file
+    window.title(f"CiS Emulator - {save_file}")
+    # Save the text in the textbox into the file path given
+    with open(save_file, "w") as file:
+        file.write(CPU_code_textbox.get("1.0", "end"))
+
+# import_code() is called to import code from a file
+def import_code():
+    # If it's not the code tab, return
+    if current_tab != "CPU_code":
+        return
+    
+    ask_file_path = filedialog.askopenfilename(
+        title="Import Code",
+        initialdir="/",
+        filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")]
+    )
+
+    # If it exists replace the textbox with the code and set save_file to the file path
+    if ask_file_path:
+        save_file = ask_file_path
+        # If the file doesn't have the .txt extension
+        if ask_file_path[len(ask_file_path) - 4:] != ".txt":
+            save_file += ".txt" # Add extension
+        
+    # Otherwise return
+    else:
+        return
+    
+    # Set the window title to the file
+    window.title(f"CiS Emulator - {save_file}")
+    # Set the textbox to the things in the file
+    with open(save_file, "r") as file:
+       CPU_code_textbox.delete("1.0", "end")
+       CPU_code_textbox.insert("1.0", file.read())
+       syntax_highlighting(True)
+
 
 #========== Main functions ==========#
 update_tabs_on_screen(current_tab)
