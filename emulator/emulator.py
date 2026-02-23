@@ -66,7 +66,7 @@ opcodes = [
 ]
 
 flags = [
-    "JMP", "TRUE" # aliases
+    "JMP", "TRUE", # aliases
     "ZERO",
     "!ZERO",
     "COUT",
